@@ -1,12 +1,13 @@
 const express = require('express');
-const { json } = require('body-parser');
+const multer = require('multer');
+const cors = require('cors');
 const AWS = require('aws-sdk');
 
 const s3 = new AWS.S3();
 
-const ACCESSS_KEY_ID = '';
-const SECRET_ACCESS_KEY = '';
-const BUCKET_NAME = '';
+const ACCESSS_KEY_ID = '***********';
+const SECRET_ACCESS_KEY = '*********';
+const BUCKET_NAME = '********';
 
 AWS.config.update({
     accessKeyId: ACCESSS_KEY_ID,
@@ -15,15 +16,19 @@ AWS.config.update({
 });
 
 const app = express();
-app.use(json());
+app.use(cors());
 
-app.post('/upload', (req, res) => {
-    const Key = Date.now() + '.txt';
-    const objectParams = { Bucket: BUCKET_NAME, Key, Body: req.body.content, ACL: 'public-read' };
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 123456789078900 } });
+
+app.post('/upload', upload.single('product-image'), (req, res) => {
+    const Key = req.body.name + '-' + Date.now() + '.png';
+    const objectParams = { Bucket: BUCKET_NAME, Key, Body: req.file.buffer, ACL: 'public-read' };
     const uploadPromise = new AWS.S3({ apiVersion: '2006-03-01' }).putObject(objectParams).promise();
-    uploadPromise.then(() => res.send('Uploaded'))
+    uploadPromise
+    .then(() => res.send(`Your file here: ${BUCKET_NAME}/${Key}`))
     .catch(error => res.send('Loi'))
-    .then(() => console.log(`Your file here: ${BUCKET_NAME}/${Key}`));
 });
 
 app.listen(3000, () => console.log('Server started.'));
+
+// https://github.com/vanpho93/angular-file-aws
